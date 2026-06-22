@@ -1,0 +1,27 @@
+# Shared
+.env
+.env.*
+!.env.example
+
+# Frontend (Node.js)
+node_modules/
+dist/
+.vite/
+
+# Test artifacts
+coverage/
+test-results/
+playwright-report/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+.DS_Store
+
+# Logs
+*.log
+
+# TypeScript
+*.tsbuildinfo
