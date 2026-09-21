@@ -12,8 +12,8 @@ Protected `main` is the only release branch. The merge contract is:
 | Gate | Contract |
 | --- | --- |
 | Direct push | Off (`enable_push: false`) |
-| Status check | `ci/woodpecker/pr/woodpecker` required (root `.woodpecker.yml`: `gitleaks` + `tree`) |
-| Official CODEOWNERS review | Not a merge gate. No file at `CODEOWNERS`, `docs/CODEOWNERS`, or `.forgejo/CODEOWNERS`. |
+| Status check | `ci/woodpecker/pr/woodpecker` required (root `.woodpecker.yml`: `gitleaks` + `tree` + `no-catchall-codeowners`) |
+| Official CODEOWNERS review | Not a merge gate. No file at `CODEOWNERS`, `docs/CODEOWNERS`, `.gitea/CODEOWNERS`, or `.forgejo/CODEOWNERS`. |
 | `force_merge` | Forbidden |
 | Approvals | `required_approvals: 0`; rejected reviews still block |
 
@@ -26,11 +26,11 @@ and
 This product tree does not PATCH Forgejo protection and does not edit CAC.
 
 Branch protection is operator-owned. Product PRs must not reintroduce
-`CODEOWNERS`, `docs/CODEOWNERS`, or `.forgejo/CODEOWNERS` (Forgejo lookup
-paths; Go-regexp, not GitHub globs). Land vehicle for ADR 0001 is occupying
-pull `#3`; `cac-design-issue-3` is design transport only (do not merge it
-to `main`). The named branch is empty vs `main` until implement restores
-delete commit `12466217`.
+`CODEOWNERS`, `docs/CODEOWNERS`, `.gitea/CODEOWNERS`, or `.forgejo/CODEOWNERS`
+(Forgejo first-existing lookup; Go-regexp, not GitHub globs). Land vehicle
+for ADR 0001 is occupying pull `#3`; `cac-design-issue-3` is design
+transport only (do not merge it to `main`). The named branch is empty vs
+`main` until implement restores delete commit `12466217`.
 
 ## Product (pointer only)
 

@@ -25,13 +25,17 @@ is unrelated occupancy.
 
 1. **No plant.** After land, Forgejo does not request official review from
    `@code/maintainers` (or any team/user) on every change. Files
-   `CODEOWNERS`, `docs/CODEOWNERS`, and `.forgejo/CODEOWNERS` are absent.
-   Outcome 1 is **no file** at those lookup paths, not “no catch-all rule
-   inside a remaining CODEOWNERS file.”
+   `CODEOWNERS`, `docs/CODEOWNERS`, `.gitea/CODEOWNERS`, and
+   `.forgejo/CODEOWNERS` are absent. Outcome 1 is **no file** at those
+   four lookup paths, not “no catch-all rule inside a remaining CODEOWNERS
+   file.” Forgejo loads the **first existing** of those paths and skips
+   CODEOWNERS on WIP/draft; user docs that list only root / `docs/` /
+   `.forgejo/` are incomplete (`.gitea/` remains in the walk). Canary:
+   [code/hello#15](https://git.cl8y.com/code/hello/pulls/15).
 2. **Merge gates unchanged.** Direct `main` stays closed. Required status
    context remains `ci/woodpecker/pr/woodpecker`. Merge stays `Do: merge`
    with `head_commit_id`. Never `force_merge`. Existing Woodpecker
-   `gitleaks` and `tree` steps stay.
+   `gitleaks` and `tree` steps stay; slice 3 adds `no-catchall-codeowners`.
 3. **No product change.** `frontend/`, OTC app URLs, and hosting are
    untouched.
 
@@ -78,12 +82,18 @@ Occupying leftover plant is live on `#3` and on `#2`: Reviews API team
 `maintainers`, `official: true`, `REQUEST_REVIEW`, not dismissed. Drain
 comments on `#3` are occupying-job / design-author queue, not
 `DrainSkip::OfficialReview`. Deleting the file does not dismiss those
-leftovers. “No new plant” is proven on a PR **opened after** land, not
-on `#3` or `#2`.
+leftovers. “No new plant” is proven on a **non-WIP** PR **opened after**
+land, not on `#3` or `#2`. A WIP/draft PR is a false pass (Forgejo skips
+CODEOWNERS on WIP/draft).
 
-Root Woodpecker is [`.woodpecker.yml`](../../.woodpecker.yml) (`gitleaks`
-then Alpine `tree`). That workflow posts the required merge context. This
-repo has no `docs/INVARIANTS.md`; the merge-plane table in
+Root Woodpecker is [`.woodpecker.yml`](../../.woodpecker.yml). On `main`
+today that file is `gitleaks` then Alpine `tree`; after slice 3 it is
+`gitleaks` + `tree` + `no-catchall-codeowners`. That workflow posts the
+required merge context `ci/woodpecker/pr/woodpecker`. The standing
+post-land composition is named in [`architecture.md`](../architecture.md);
+the four-path YAML is this ADR’s slice-3 contract.
+
+This repo has no `docs/INVARIANTS.md`; the merge-plane table in
 [`architecture.md`](../architecture.md) is the local contract after this
 ADR.
 
@@ -113,7 +123,7 @@ ADR.
 
 | Surface | Change |
 | --- | --- |
-| `CODEOWNERS` (root) | Delete. Do not recreate under `docs/` or `.forgejo/`. |
+| `CODEOWNERS` (root) | Delete. Do not recreate under `docs/`, `.gitea/`, or `.forgejo/`. |
 | `docs/architecture.md` | Merge-plane map (this change). |
 | `docs/adr/0001-remove-catchall-codeowners.md` | This decision. |
 | `.woodpecker.yml` | Keep existing `gitleaks` and `tree` steps. Add exactly the Alpine step in slice 3. No `scripts/`. No `apk add`. No POST statuses. |
@@ -121,23 +131,24 @@ ADR.
 | Branch protection JSON | No change from this repo. |
 | `frontend/` / `.gitlab-ci.yml` | No change. |
 
-Forgejo CODEOWNERS lookup is root, `docs/`, or `.forgejo/` (Go-regexp, not
-GitHub globs). Outcome 1 is **no file** at those three paths.
+Forgejo CODEOWNERS lookup is the first existing of root, `docs/`,
+`.gitea/`, or `.forgejo/` (Go-regexp, not GitHub globs). Outcome 1 is
+**no file** at those four paths. Forgejo skips CODEOWNERS on WIP/draft.
 
 ## Affected invariants
 
 This repo had no local invariant file. After this ADR the merge-plane table
 in [`architecture.md`](../architecture.md) is the local contract:
 
-- No file at `CODEOWNERS`, `docs/CODEOWNERS`, or `.forgejo/CODEOWNERS` on `main`.
+- No file at `CODEOWNERS`, `docs/CODEOWNERS`, `.gitea/CODEOWNERS`, or `.forgejo/CODEOWNERS` on `main`.
 - No direct `main`; Woodpecker PR context required; no `force_merge`.
 - Rejected reviews still block; official CODEOWNERS review does not.
 
 Do not weaken cl8y-forgejo protection invariants **2–10** and **13** from
 product commits. CAC invariants 29 / 67 / #388 stay: skip official-review
 deadlock; never `force_merge`; drain does not delete CODEOWNERS. Product
-land makes the skip class stop firing **for this repo** once new PRs have
-no plant.
+land makes the skip class stop firing **for this repo** once new **non-WIP**
+PRs have no plant.
 
 ## Alternatives
 
@@ -151,6 +162,7 @@ no plant.
 | Merge empty `#3` (`dd4ef34`) | Named branch equals `main`; CODEOWNERS stays. |
 | Merge `cac-design-issue-3` to `main` | That ref still has root `CODEOWNERS`; it is not a valid Outcome 1 tip. |
 | Open `issue/3` beside `#3` | Occupancy violation. |
+| Assert three lookup paths only | After the root file is gone, a later PR can re-plant at `.gitea/CODEOWNERS` and a three-path check still passes. |
 
 ## Complexity added / removed
 
@@ -158,8 +170,8 @@ no plant.
 class for this repo's later PRs; operator dismiss-to-land ritual.
 
 **Added:** two tracked docs files and one Alpine `test ! -f` step in
-`.woodpecker.yml`. No `scripts/` helper, no new runtime, no new merge API,
-no `.gitignore` carve-out.
+`.woodpecker.yml` (four paths). No `scripts/` helper, no new runtime, no
+new merge API, no `.gitignore` carve-out.
 
 ## Migration
 
@@ -171,22 +183,25 @@ branch to historical delete `12466217` (parent is `dd4ef34`; Woodpecker
 already succeeded there), then cherry-pick accepted
 `cac-design-issue-3` commit(s) on top (additive). The cherry-pick must
 not restore `CODEOWNERS`. After slices 1–3 the occupying tip has: file
-absent, these docs, and the Alpine step in slice 3.
+absent at all four lookup paths, these docs, and the Alpine step in
+slice 3.
 
 `cac-design-issue-3` is design transport only: do not open it as a PR and
 do not merge it to `main`.
 
 Open PRs opened while root `CODEOWNERS` existed may still show a leftover
 official request (`#3`, `#2`). Implement does **not** dismiss them.
-After this lands, new PRs must not receive a CODEOWNERS plant from this
-tree.
+After this lands, a **non-WIP** PR opened after land must not receive a
+CODEOWNERS plant from this tree. `#3` and `#2` remain leftover, not that
+oracle.
 
 Title/body of `#3` need no extra `Fixes #3` (the pull **is** iid 3).
 
 ## Observability
 
-- Forgejo PR “Reviews”: no official CODEOWNERS request on PRs **opened after
-  land**. `#3` and `#2` are not that oracle (leftover plants remain).
+- Forgejo PR “Reviews”: no official CODEOWNERS request on a **non-WIP** PR
+  **opened after land**. `#3` and `#2` are leftover plants, not that oracle.
+  A WIP/draft PR is not that oracle (Forgejo skips CODEOWNERS on WIP/draft).
 - Protection GET (operator, authenticated): still `enable_push=false`,
   status context `ci/woodpecker/pr/woodpecker`,
   `block_on_official_review_requests=false`. Anonymous GET is 401. Not a CI
@@ -196,7 +211,7 @@ Title/body of `#3` need no extra `Fixes #3` (the pull **is** iid 3).
   **new** occupying PRs on this path. Leftover on `#3`/`#2` is not a
   drain-skip failure of this ticket. No `/health` or `/status` change.
 - Woodpecker still posts `ci/woodpecker/pr/woodpecker` on PR tips
-  (gitleaks + tree + new assertion).
+  (`gitleaks` + `tree` + `no-catchall-codeowners`).
 
 ## Failure modes
 
@@ -205,7 +220,9 @@ Title/body of `#3` need no extra `Fixes #3` (the pull **is** iid 3).
 | File deleted; leftover official request on `#3` or `#2` | Do not dismiss; do not `force_merge`. Land `#3` with tip ACCEPT + PR Woodpecker + SHA-pinned `Do: merge`. If CAC later skips `OfficialReview` on that leftover, operators use the same `Do: merge` path. |
 | Merge empty `#3` without restoring `12466217` | CODEOWNERS remains; Outcome 1 fails. Restore the delete on the occupying branch first. |
 | File deleted; protection later PATCHed back to official-review block | New PRs still have no plant. Old leftover requests could 405 until they expire or a human dismisses. Re-planting CODEOWNERS is a regression. |
-| CODEOWNERS re-added on a later PR | Woodpecker `no-catchall-codeowners` fails; do not merge that tip. |
+| CODEOWNERS re-added on a later PR (any of the four paths) | Woodpecker `no-catchall-codeowners` fails; do not merge that tip. |
+| Re-plant only at `.gitea/CODEOWNERS` | Four-path assertion fails. A three-path check would miss it; Forgejo would plant from that file. |
+| Plant-oracle PR is WIP/draft | False pass: Forgejo skips CODEOWNERS on WIP/draft. Glance a **non-WIP** PR opened after land. `#3`/`#2` are leftover. |
 | Sibling PR `issue/3` | Occupancy violation. Update `#3` only. |
 | Merge `cac-design-issue-3` to `main` | Leaves the plant; contradicts Outcome 1. Transport only. |
 | Implement PATCHes protection or edits CAC | Out of authority / wrong repo. |
@@ -218,13 +235,13 @@ Title/body of `#3` need no extra `Fixes #3` (the pull **is** iid 3).
 1. **Delete catch-all file** — restore root `CODEOWNERS` absence on occupying
    `#3`. Fast-forward `chore/remove-catchall-codeowners` to `12466217`
    (already a delete-only commit on `dd4ef34`) or replay an equivalent
-   delete. Confirm `docs/CODEOWNERS` and `.forgejo/CODEOWNERS` do not
-   exist. No `frontend/` edits. Prefer additive commits; do not open
-   `issue/3`.
+   delete. Confirm `docs/CODEOWNERS`, `.gitea/CODEOWNERS`, and
+   `.forgejo/CODEOWNERS` do not exist. No `frontend/` edits. Prefer
+   additive commits; do not open `issue/3`.
 2. **Preserve design** — keep this ADR and `docs/architecture.md` on the
    occupying head via cherry-pick of accepted `cac-design-issue-3`
    commit(s) onto the slice-1 tip. Cherry-pick must not restore
-   `CODEOWNERS`.
+   `CODEOWNERS` (including under `docs/`, `.gitea/`, or `.forgejo/`).
 3. **CI assertion** — add this step to `.woodpecker.yml`; do not change
    existing `gitleaks` or `tree` steps; do not add `scripts/`; do not
    `apk add`; do not POST statuses:
@@ -235,6 +252,7 @@ Title/body of `#3` need no extra `Fixes #3` (the pull **is** iid 3).
     commands:
       - test ! -f CODEOWNERS
       - test ! -f docs/CODEOWNERS
+      - test ! -f .gitea/CODEOWNERS
       - test ! -f .forgejo/CODEOWNERS
 ```
 
@@ -247,7 +265,7 @@ Woodpecker (only):
 
 | Requirement | Check |
 | --- | --- |
-| No CODEOWNERS at Forgejo lookup paths | Step `no-catchall-codeowners` as in slice 3 (`alpine:3.20`, `test ! -f` on the three paths). Keep existing `gitleaks` and `tree` steps. |
+| No CODEOWNERS at Forgejo lookup paths | Step `no-catchall-codeowners` as in slice 3 (`alpine:3.20`, `test ! -f` on the four paths). Keep existing `gitleaks` and `tree` steps. |
 
 Human / review (not Woodpecker; alpine has no `rg`; do not add `scripts/`):
 
@@ -257,7 +275,7 @@ Human / review (not Woodpecker; alpine has no `rg`; do not add `scripts/`):
 | Merge docs do not advise `force_merge: true` | Reviewers confirm product docs do not recommend enabling `force_merge`. If a docs grep is used at all, match `force_merge:\s*true` as **advice**, not any occurrence of `force_merge` (this ADR names the forbidden API). |
 | Frontend unchanged | No `frontend/` edits on this ticket |
 | Not live Forgejo PATCH | No protection API client in this repo |
-| Leftover on `#3`/`#2` is not the plant oracle | “No new plant” is a PR opened after land |
+| Leftover on `#3`/`#2` is not the plant oracle | “No new plant” is a **non-WIP** PR opened after land. `#3` and `#2` are leftover. A WIP/draft PR is a false pass (Forgejo skips CODEOWNERS on WIP/draft). |
 | Occupying tip is not empty | `#3` diff deletes `CODEOWNERS`; named branch is not `dd4ef34` |
 
 `npm run build` / `type-check` is not the merge-plane oracle. Do not add
@@ -272,8 +290,9 @@ a frontend test that reads `.gitignore`.
    `Do: merge`. Do not dismiss leftover official requests on `#3` or `#2`.
    If CAC later skips `OfficialReview` on that leftover, use the same
    `Do: merge` path. Never `force_merge`.
-3. Operator glance (not a merge gate): a **subsequent** PR in this repo
-   (opened after land) has no official CODEOWNERS request. Protection GET
+3. Operator glance (not a merge gate): a **non-WIP** PR opened after land
+   in this repo has no official CODEOWNERS request. `#3` and `#2` are not
+   that oracle. A WIP/draft PR is a false pass. Protection GET
    (authenticated) unchanged vs author attestation; if it differs, escalate
    to forge owners, do not PATCH from this repo.
 
@@ -289,17 +308,19 @@ rollback of this ticket.
 
 ## Integration completion criteria
 
-- Root / `docs/` / `.forgejo/` CODEOWNERS files absent on `main`.
+- Root / `docs/` / `.gitea/` / `.forgejo/` CODEOWNERS files absent on `main`.
 - `.woodpecker.yml` contains the slice 3 Alpine step and fails closed if
-  those paths return; existing `gitleaks` and `tree` steps remain.
+  those four paths return; existing `gitleaks` and `tree` steps remain.
 - [`architecture.md`](../architecture.md) merge table matches Outcome 1
-  (no file at the three lookup paths); this ADR remains the decision record.
+  (no file at the four lookup paths) and names the post-land Woodpecker
+  composition (`gitleaks` + `tree` + `no-catchall-codeowners`); this ADR
+  remains the decision record.
 - No `force_merge: true` advice in product docs; no protection PATCH; no
   CAC source edits; no frontend/deploy edits.
 - Occupying work is still a single PR (`#3`); no sibling head; design
   transport was not merged to `main`.
 - Leftover official request on `#3` (and `#2`) may remain until those PRs
-  merge or expire; “no new plant” is a PR opened after land.
+  merge or expire; “no new plant” is a **non-WIP** PR opened after land.
 
 Live Grafana/CAC leftover cleanup is not a completion criterion here.
 
