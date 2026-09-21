@@ -27,10 +27,10 @@ This product tree does not PATCH Forgejo protection and does not edit CAC.
 
 Branch protection is operator-owned. Product PRs must not reintroduce
 `CODEOWNERS`, `docs/CODEOWNERS`, `.gitea/CODEOWNERS`, or `.forgejo/CODEOWNERS`
-(Forgejo first-existing lookup; Go-regexp, not GitHub globs). Land vehicle
-for ADR 0001 is occupying pull `#3`; `cac-design-issue-3` is design
-transport only (do not merge it to `main`). The named branch is empty vs
-`main` until implement restores delete commit `12466217`.
+(Forgejo first-existing lookup; Go-regexp, not GitHub globs). ADR 0001
+implement lands via head `issue/3` (restores the root delete `#3` merged
+without). `cac-design-issue-3` is design transport only (do not merge it
+to `main`).
 
 ## Product (pointer only)
 

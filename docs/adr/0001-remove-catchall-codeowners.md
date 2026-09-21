@@ -1,6 +1,6 @@
 # ADR 0001: Remove catch-all CODEOWNERS
 
-Status: **Proposed** — [#3](https://git.cl8y.com/code/cl8y-otc-hub/issues/3).
+Status: **Accepted** — [#3](https://git.cl8y.com/code/cl8y-otc-hub/issues/3).
 Keywords in that issue are not architecture approval. Ordinary design is not
 a founder card. This ADR does not authorize deploy, spend, custody rotation,
 or Forgejo protection PATCH
@@ -317,8 +317,8 @@ rollback of this ticket.
   remains the decision record.
 - No `force_merge: true` advice in product docs; no protection PATCH; no
   CAC source edits; no frontend/deploy edits.
-- Occupying work is still a single PR (`#3`); no sibling head; design
-  transport was not merged to `main`.
+- Occupying implement head is `issue/3` (restores Outcome 1 after `#3`
+  merged without the delete); no sibling open PR for the same bundle.
 - Leftover official request on `#3` (and `#2`) may remain until those PRs
   merge or expire; “no new plant” is a **non-WIP** PR opened after land.
 
